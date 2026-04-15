@@ -18,6 +18,19 @@ import numpy.fft as fft
 from scipy.stats import binned_statistic
 import csv
 
+def READ_BOX_AVERAGES():
+    fid = open("output/analysis/globalAverage.dat", "r")
+    varnames = fid.readline().split()
+    fid.close()
+    data = np.loadtxt("output/analysis/globalAverage.dat",skiprows=1)
+    V = {}
+    i = 0
+    for name in varnames:
+        V[name] = data[:,i]
+        i += 1
+
+    return V
+
 def READ_VTK(vtk_path, t):
     NVAR = 4
     RHO = 0

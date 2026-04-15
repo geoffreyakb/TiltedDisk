@@ -20,18 +20,36 @@ class Analysis {
         void PerformAnalysis(DataBlock& );
 
     private:
-        void ComputeTilt(IdefixHostArray4D<real> Vin, std::vector<real> &outCos, std::vector<real> &outSin);
-        void WriteRadialAverage(std::vector<real> &data, std::string filename, std::string variable_name);
+        void ComputeAngularMomentum(IdefixHostArray4D<real> Vin);
+        void ComputeSurfaceDensity(IdefixHostArray4D<real> Vin);
+        void WriteGlobalAverage(DataBlock &data);
+        void WriteRadialAverage();
 
         DataBlockHost d;
         Grid &grid;
 
-        int countAverage;
-        int precision;
-        std::ofstream fileRadialAverage;
-
         real epsilon;
         real alpha;
+
+        int countAverage;
+        int precision;
+        int column_width;
+        std::ofstream fileGlobalAverage;
+        std::ofstream fileRadialAverage;
+        std::string pathAnalysisFolder;
+
+        int radial_NVARS;
+        int Sigma;
+        int Tilt;
+        int Precession;
+        int Lx;
+        int Ly;
+        int Lz;
+        IdefixHostArray2D<real> radialAverage;
+        int global_NVARS;
+        IdefixHostArray1D<real> globalAverage;
+
+        std::chrono::time_point<std::chrono::steady_clock> start;
 };
 
 #endif // ANALYSIS_HPP__
