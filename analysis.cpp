@@ -10,6 +10,8 @@
 Analysis::Analysis(Input &input, Grid &grid, DataBlock &data) : grid(grid), d(data) {
     // This hack ensures that d.Vc is an array distinct from data.hydro->Vc, even on CPUs
     this->d.Vc = Kokkos::create_mirror(data.hydro->Vc);
+    GridHost gh(grid);
+    gh.SyncFromDevice();
     // Input parameters
     this->epsilon = input.Get<real>("Setup","epsilon",0);
     this->alpha = input.Get<real>("Setup","alpha",0);
@@ -24,14 +26,16 @@ Analysis::Analysis(Input &input, Grid &grid, DataBlock &data) : grid(grid), d(da
     this->Lx = 1;
     this->Ly = 2;
     this->Lz = 3;
-    this->radialAverage = IdefixHostArray2D<real> ("radialAverage", radial_NVARS, grid.np_int[IDIR]);
+    this->radialAverage = IdefixHostArray2D<real> ("radialAverage", radial_NVARS, gh.np_int[IDIR]);
     // Global averages (to update according to the number of global diagnosis you want)
     this->global_NVARS = 0;
     this->globalAverage = IdefixHostArray1D<real> ("globalAverage", global_NVARS);
 }
 
 void Analysis::ComputeRadialAverage(IdefixHostArray4D<real> Vin) {
-    IdefixHostArray2D<real> loc_radialAverage("loc_radialAverage", radial_NVARS, grid.np_int[IDIR]);
+    GridHost gh(grid);
+    gh.SyncFromDevice();
+    IdefixHostArray2D<real> loc_radialAverage("loc_radialAverage", radial_NVARS, gh.np_int[IDIR]);
 
     for(int k = d.beg[KDIR]; k < d.end[KDIR] ; k++) {
         for(int j = d.beg[JDIR]; j < d.end[JDIR] ; j++) {
@@ -59,7 +63,7 @@ void Analysis::ComputeRadialAverage(IdefixHostArray4D<real> Vin) {
                 real ephi_ey = cos(phi);
                 real ephi_ez = ZERO_F;
                 // Filling the local radial averages arrays
-                int glob_i = i + d.gbeg[IDIR] - 2*grid.nghost[IDIR];    // -nghost for the global ghosts -nghost for the local ones (i does not start at 0)
+                int glob_i = i + d.gbeg[IDIR] - 2*gh.nghost[IDIR];    // -nghost for the global ghosts -nghost for the local ones (i does not start at 0)
                 loc_radialAverage(Sigma, glob_i) += Vin(RHO,k,j,i) * r * sin(th) * dth * dphi/(2*M_PI);      // Should be the same definition as Kimmig and Dullemond (2024)
                 loc_radialAverage(Lx, glob_i)    += Lr*er_ex + Lth*eth_ex + Lphi*ephi_ex;
                 loc_radialAverage(Ly, glob_i)    += Lr*er_ey + Lth*eth_ey + Lphi*ephi_ey;
@@ -68,9 +72,9 @@ void Analysis::ComputeRadialAverage(IdefixHostArray4D<real> Vin) {
         }
     }
 
-    IdefixHostArray2D<real> glob_radialAverage("glob_radialAverage", radial_NVARS, grid.np_int[IDIR]);
+    IdefixHostArray2D<real> glob_radialAverage("glob_radialAverage", radial_NVARS, gh.np_int[IDIR]);
     #ifdef WITH_MPI
-        MPI_Allreduce(loc_radialAverage.data(), glob_radialAverage.data(), radial_NVARS*grid.np_int[IDIR], realMPI, MPI_SUM, MPI_COMM_WORLD);
+        MPI_Allreduce(loc_radialAverage.data(), glob_radialAverage.data(), radial_NVARS*gh.np_int[IDIR], realMPI, MPI_SUM, MPI_COMM_WORLD);
     #else
         glob_radialAverage = loc_radialAverage;
     #endif
@@ -104,8 +108,10 @@ void Analysis::WriteRadialAverage() {
         fileRadialAverage << std::setw(column_width) << "Lz";
         fileRadialAverage << std::endl;
 
-        for (int i = 0 ; i < grid.np_int[IDIR] ; i++) {
-            fileRadialAverage << std::scientific << std::setw(column_width) << grid.x[IDIR](i + grid.nghost[IDIR]);
+        GridHost gh(grid);
+        gh.SyncFromDevice();
+        for (int i = 0 ; i < gh.np_int[IDIR] ; i++) {
+            fileRadialAverage << std::scientific << std::setw(column_width) << gh.x[IDIR](i + gh.nghost[IDIR]);
             for (int VAR = 0; VAR < radial_NVARS; VAR++) {
                 fileRadialAverage << std::scientific << std::setw(column_width) << radialAverage(VAR, i);
             }
