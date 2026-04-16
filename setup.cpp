@@ -133,9 +133,6 @@ void Setup::InitFlow(DataBlock &data) {
                 y = r * sin(th) * sin(phi);
                 z = r * cos(th);
                 // Rotation around the x-axis (the -tilt is for a clockwise rotation around the x-axis if you set a positive angle)
-                // xUnt = x;
-                // yUnt = cos(-tilt)*y - sin(-tilt)*z;
-                // zUnt = sin(-tilt)*y + cos(-tilt)*z;
                 xUnt = cos(-tilt)*x + sin(-tilt)*z;
                 yUnt = y;
                 zUnt = -sin(-tilt)*x + cos(-tilt)*z;
@@ -169,9 +166,6 @@ void Setup::InitFlow(DataBlock &data) {
                 VyUnt = VrUnt*er_ey + VthUnt*eth_ey + VphiUnt*ephi_ey;
                 VzUnt = VrUnt*er_ez + VthUnt*eth_ez + VphiUnt*ephi_ez;
                 // Cartesian tilted velocity
-                // Vx = VxUnt;
-                // Vy = cos(tilt)*VyUnt - sin(tilt)*VzUnt;
-                // Vz = sin(tilt)*VyUnt + cos(tilt)*VzUnt;    
                 Vx = cos(tilt)*VxUnt + sin(tilt)*VzUnt;
                 Vy = VyUnt;
                 Vz = -sin(tilt)*VxUnt + cos(tilt)*VzUnt;      

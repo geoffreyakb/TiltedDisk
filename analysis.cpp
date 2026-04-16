@@ -19,110 +19,62 @@ Analysis::Analysis(Input &input, Grid &grid, DataBlock &data) : grid(grid), d(da
     this->column_width = 2*precision;
     this->pathAnalysisFolder = "output/analysis/";
     // Radial averages (to update according to the number of radial profiles you want)
-    this->radial_NVARS = 6;
+    this->radial_NVARS = 4;
     this->Sigma = 0;
-    this->Tilt = 1;
-    this->Precession = 2;
-    this->Lx = 3;
-    this->Ly = 4;
-    this->Lz = 5;
+    this->Lx = 1;
+    this->Ly = 2;
+    this->Lz = 3;
     this->radialAverage = IdefixHostArray2D<real> ("radialAverage", radial_NVARS, grid.np_int[IDIR]);
     // Global averages (to update according to the number of global diagnosis you want)
     this->global_NVARS = 0;
     this->globalAverage = IdefixHostArray1D<real> ("globalAverage", global_NVARS);
 }
 
-void Analysis::ComputeAngularMomentum(IdefixHostArray4D<real> Vin) {
-    for(int i = d.beg[IDIR]; i < d.end[IDIR] ; i++) {
-        real r = d.x[IDIR](i);
-        real loc_Lx = ZERO_F;
-        real loc_Ly = ZERO_F;
-        real loc_Lz = ZERO_F;
+void Analysis::ComputeRadialAverage(IdefixHostArray4D<real> Vin) {
+    IdefixHostArray2D<real> loc_radialAverage("loc_radialAverage", radial_NVARS, grid.np_int[IDIR]);
 
-        for(int k = d.beg[KDIR]; k < d.end[KDIR] ; k++) {
-            for(int j = d.beg[JDIR]; j < d.end[JDIR] ; j++) {
-                    real th = d.x[JDIR](j);
-                    real dth = d.dx[JDIR](j);
-                    real phi = d.x[KDIR](k);
-                    real dphi = d.dx[KDIR](k);
-
-                    real rCROSSv_r = ZERO_F;
-                    real rCROSSv_th = - r * Vin(VX3,k,j,i);
-                    real rCROSSv_phi = r * Vin(VX2,k,j,i);
-
-                    real loc_Lr = Vin(RHO,k,j,i) * rCROSSv_r * pow(r,2) * sin(th) * dth * dphi;
-                    real loc_Lth = Vin(RHO,k,j,i) * rCROSSv_th * pow(r,2) * sin(th) * dth * dphi;
-                    real loc_Lphi = Vin(RHO,k,j,i) * rCROSSv_phi * pow(r,2) * sin(th) * dth * dphi;
-
-                    real er_ex = sin(th)*cos(phi);
-                    real er_ey = sin(th)*sin(phi);
-                    real er_ez = cos(th);
-                    real eth_ex = cos(th)*cos(phi);
-                    real eth_ey = cos(th)*sin(phi);
-                    real eth_ez = -sin(th);
-                    real ephi_ex = -sin(phi);
-                    real ephi_ey = cos(phi);
-                    real ephi_ez = ZERO_F;
-                    loc_Lx += loc_Lr*er_ex + loc_Lth*eth_ex + loc_Lphi*ephi_ex;
-                    loc_Ly += loc_Lr*er_ey + loc_Lth*eth_ey + loc_Lphi*ephi_ey;
-                    loc_Lz += loc_Lr*er_ez + loc_Lth*eth_ez + loc_Lphi*ephi_ez;
-            }
-        }
-
-        real glob_Lx, glob_Ly, glob_Lz;
-        #ifdef WITH_MPI
-            MPI_Reduce(&loc_Lx, &glob_Lx, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-            MPI_Reduce(&loc_Ly, &glob_Ly, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-            MPI_Reduce(&loc_Lz, &glob_Lz, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        #else
-            glob_Lx = loc_Lx;
-            glob_Ly = loc_Ly;
-            glob_Lz = loc_Lz;
-        #endif
-    
-        real norm_L = sqrt(pow(glob_Lx, 2) + pow(glob_Ly, 2) + pow(glob_Lz, 2));
-        
-        int ip = i - d.beg[IDIR];
-        radialAverage(Tilt, ip) = acos(glob_Lz / norm_L) * 180/M_PI;
-        // radialAverage(Precession, ip) = atan2(glob_Ly, glob_Lx) * 180/M_PI + 90;           // In Kimmig and Dullemont (2024), they rotate the disk around the y-axis, hence the +90°.
-        radialAverage(Precession, ip) = atan2(glob_Ly, glob_Lx) * 180/M_PI;
-        radialAverage(Lx, ip) = glob_Lx;
-        radialAverage(Ly, ip) = glob_Ly;
-        radialAverage(Lz, ip) = glob_Lz;
-    }
-}
-
-void Analysis::ComputeSurfaceDensity(IdefixHostArray4D<real> Vin) {
-    for(int i = d.beg[IDIR]; i < d.end[IDIR] ; i++) {
-        real r = d.x[IDIR](i);
-        real loc_sigma = ZERO_F;
-
+    for(int k = d.beg[KDIR]; k < d.end[KDIR] ; k++) {
         for(int j = d.beg[JDIR]; j < d.end[JDIR] ; j++) {
-            real th = d.x[JDIR](j);
-            real dth = d.dx[JDIR](j);
-            
-            real rhophi = ZERO_F;
-            real sum_dphi = ZERO_F;
-            for(int k = d.beg[KDIR]; k < d.end[KDIR] ; k++) {
+            for (int i = d.beg[IDIR]; i < d.end[IDIR]; i++){
+                real r = d.x[IDIR](i);
+                real th = d.x[JDIR](j);
+                real dth = d.dx[JDIR](j);
+                real phi = d.x[KDIR](k);
                 real dphi = d.dx[KDIR](k);
-                rhophi += Vin(RHO,k,j,i) * dphi;
-                sum_dphi += dphi;
+                // Angular momentum in spherical coordinates
+                real rCROSSv_r = ZERO_F;
+                real rCROSSv_th = - r * Vin(VX3,k,j,i);
+                real rCROSSv_phi = r * Vin(VX2,k,j,i);
+                real Lr = Vin(RHO,k,j,i) * rCROSSv_r * pow(r,2) * sin(th) * dth * dphi;
+                real Lth = Vin(RHO,k,j,i) * rCROSSv_th * pow(r,2) * sin(th) * dth * dphi;
+                real Lphi = Vin(RHO,k,j,i) * rCROSSv_phi * pow(r,2) * sin(th) * dth * dphi;
+                // Transforming in cartesian coordinates
+                real er_ex = sin(th)*cos(phi);
+                real er_ey = sin(th)*sin(phi);
+                real er_ez = cos(th);
+                real eth_ex = cos(th)*cos(phi);
+                real eth_ey = cos(th)*sin(phi);
+                real eth_ez = -sin(th);
+                real ephi_ex = -sin(phi);
+                real ephi_ey = cos(phi);
+                real ephi_ez = ZERO_F;
+                // Filling the local radial averages arrays
+                int glob_i = i + d.gbeg[IDIR] - 2*grid.nghost[IDIR];    // -nghost for the global ghosts -nghost for the local ones (i does not start at 0)
+                loc_radialAverage(Sigma, glob_i) += Vin(RHO,k,j,i) * r * sin(th) * dth * dphi/(2*M_PI);      // Should be the same definition as Kimmig and Dullemond (2024)
+                loc_radialAverage(Lx, glob_i)    += Lr*er_ex + Lth*eth_ex + Lphi*ephi_ex;
+                loc_radialAverage(Ly, glob_i)    += Lr*er_ey + Lth*eth_ey + Lphi*ephi_ey;
+                loc_radialAverage(Lz, glob_i)    += Lr*er_ez + Lth*eth_ez + Lphi*ephi_ez;
             }
-            rhophi = rhophi / sum_dphi;     // MPI_REDUCE FOR RHOPHI ??????????????????????????????????
-
-            loc_sigma += rhophi * r * sin(th) * dth;
         }
-
-        real glob_sigma;
-        #ifdef WITH_MPI
-            MPI_Reduce(&loc_sigma, &glob_sigma, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        #else
-            glob_sigma = loc_sigma;
-        #endif
-
-        int ip = i - d.beg[IDIR];
-        radialAverage(Sigma, ip) = glob_sigma;
     }
+
+    IdefixHostArray2D<real> glob_radialAverage("glob_radialAverage", radial_NVARS, grid.np_int[IDIR]);
+    #ifdef WITH_MPI
+        MPI_Allreduce(loc_radialAverage.data(), glob_radialAverage.data(), radial_NVARS*grid.np_int[IDIR], realMPI ,MPI_SUM, MPI_COMM_WORLD);
+    #else
+        glob_radialAverage = loc_radialAverage;
+    #endif
+    radialAverage = glob_radialAverage;
 }
 
 void Analysis::WriteGlobalAverage(DataBlock &data) {
@@ -147,8 +99,6 @@ void Analysis::WriteRadialAverage() {
 
         fileRadialAverage << std::setw(column_width) << "r";
         fileRadialAverage << std::setw(column_width) << "Sigma";
-        fileRadialAverage << std::setw(column_width) << "Tilt";
-        fileRadialAverage << std::setw(column_width) << "Precession";
         fileRadialAverage << std::setw(column_width) << "Lx";
         fileRadialAverage << std::setw(column_width) << "Ly";
         fileRadialAverage << std::setw(column_width) << "Lz";
@@ -181,24 +131,16 @@ void Analysis::PerformAnalysis(DataBlock &data) {
     }
     d.SyncFromDevice();
 
-    if (idfx::prank == 0) {
-        this->start = std::chrono::high_resolution_clock::now();
-    }
-
     // Computing quantities
-    ComputeAngularMomentum(d.Vc);
-    ComputeSurfaceDensity(d.Vc);
+    ComputeRadialAverage(d.Vc);
 
     // Writing averages
     WriteGlobalAverage(data);
     WriteRadialAverage();
 
     if (idfx::prank == 0) {
-        auto stop = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - this->start);
-        std::cout << "Analysis: Write average files n°" << std::to_string(this->countAverage) << "...done in " << std::to_string(duration.count()*1e-9) << " s." << std::endl;
+        std::cout << "Analysis: Write average files n°" << std::to_string(this->countAverage) << std::endl;
     }
-
     // Updating count
     this->countAverage++;
 

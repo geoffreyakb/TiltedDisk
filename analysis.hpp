@@ -20,8 +20,7 @@ class Analysis {
         void PerformAnalysis(DataBlock& );
 
     private:
-        void ComputeAngularMomentum(IdefixHostArray4D<real> Vin);
-        void ComputeSurfaceDensity(IdefixHostArray4D<real> Vin);
+        void ComputeRadialAverage(IdefixHostArray4D<real> Vin);
         void WriteGlobalAverage(DataBlock &data);
         void WriteRadialAverage();
 
@@ -40,16 +39,12 @@ class Analysis {
 
         int radial_NVARS;
         int Sigma;
-        int Tilt;
-        int Precession;
         int Lx;
         int Ly;
         int Lz;
         IdefixHostArray2D<real> radialAverage;
         int global_NVARS;
         IdefixHostArray1D<real> globalAverage;
-
-        std::chrono::time_point<std::chrono::steady_clock> start;
 };
 
 #endif // ANALYSIS_HPP__

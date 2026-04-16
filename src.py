@@ -17,6 +17,7 @@ import cv2
 import numpy.fft as fft
 from scipy.stats import binned_statistic
 import csv
+import math
 
 def READ_BOX_AVERAGE():
     fid = open("output/analysis/globalAverage.dat", "r")
@@ -60,12 +61,14 @@ def READ_RADIAL_AVERAGE(n_average, n_r):
             j=j+1
 
         Sigma[i,:] = V['Sigma']
-        Tilt[i,:] = V['Tilt']
-        Precession[i,:] = V['Precession']
         L[i,:,0] = V['Lx']
         L[i,:,1] = V['Ly']
         L[i,:,2] = V['Lz']
 
+        norm = np.sqrt(L[i,:,0]**2 + L[i,:,1]**2 + L[i,:,2]**2)
+        Tilt[i] = np.arccos(L[i,:,2] / norm) * 180/np.pi
+        Precession[i] = np.arctan2(L[i,:,1], L[i,:,0]) * 180/np.pi
+        
     return V["r"], Sigma, Tilt, Precession, L
 
 def READ_VTK(n_vtk):
