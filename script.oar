@@ -1,0 +1,14 @@
+#!/bin/bash
+# sample single GPU script on kraken
+
+#OAR -l /nodes=1/gpu=1,walltime=10:00:00
+#OAR --name xxxx
+#OAR --project mhdiscs
+##OAR --notify mail:geoffroy.lesur@univ-grenoble-alpes.fr
+
+cd $OAR_WORKDIR
+
+# load customised environment
+module load cuda/12.9.41.patched
+
+./idefix
