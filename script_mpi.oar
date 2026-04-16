@@ -1,16 +1,16 @@
 #!/bin/bash
 
 #OAR --name ???
-#OAR -l /nodes=1/gpu=1,walltime=02:00:00
+#OAR -l /nodes=1/gpu=4,walltime=02:00:00
 #OAR --project mhdiscs
 #OAR --notify mail:geoffrey.marty@univ-grenoble-alpes.fr
 #OAR --stdout run.out
 #OAR --stderr run.err
 
 cd $OAR_WORKDIR
-module load cuda/12.9.41.patched
+module load cuda/12.9.41.patched openmpi/5.0.8/cuda-12.9-gcc-14.2.0 ucx/1.19.0-cuda
 
-./idefix
+mpirun --mca pml ucx --mca osc ucx --mca btl ^openib -np 4 ./idefix
 
 mv *.*.log output/logs/
 mv *.out output/logs/

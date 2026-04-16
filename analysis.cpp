@@ -70,7 +70,7 @@ void Analysis::ComputeRadialAverage(IdefixHostArray4D<real> Vin) {
 
     IdefixHostArray2D<real> glob_radialAverage("glob_radialAverage", radial_NVARS, grid.np_int[IDIR]);
     #ifdef WITH_MPI
-        MPI_Allreduce(loc_radialAverage.data(), glob_radialAverage.data(), radial_NVARS*grid.np_int[IDIR], realMPI ,MPI_SUM, MPI_COMM_WORLD);
+        MPI_Allreduce(loc_radialAverage.data(), glob_radialAverage.data(), radial_NVARS*grid.np_int[IDIR], realMPI, MPI_SUM, MPI_COMM_WORLD);
     #else
         glob_radialAverage = loc_radialAverage;
     #endif
