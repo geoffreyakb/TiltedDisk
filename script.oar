@@ -13,4 +13,3 @@ module load cuda/12.9.41.patched
 mv *.*.log output/logs/
 mv *.out output/logs/
 mv *.err output/logs/
-oarsub -S ./script_python.oar

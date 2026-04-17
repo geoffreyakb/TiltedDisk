@@ -21,11 +21,13 @@ class Analysis {
 
     private:
         void ComputeRadialAverage(IdefixHostArray4D<real> Vin);
+        void ComputeGlobalAverage(IdefixHostArray4D<real> Vin);
         void WriteGlobalAverage(DataBlock &data);
         void WriteRadialAverage();
 
         DataBlockHost d;
         Grid &grid;
+        GridHost gh;
 
         real epsilon;
         real alpha;
@@ -44,6 +46,7 @@ class Analysis {
         int Lz;
         IdefixHostArray2D<real> radialAverage;
         int global_NVARS;
+        int Mtot;
         IdefixHostArray1D<real> globalAverage;
 };
 

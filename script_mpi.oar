@@ -13,4 +13,3 @@ mpirun --mca pml ucx --mca osc ucx --mca btl ^openib -np 4 ./idefix
 mv *.*.log output/logs/
 mv *.out output/logs/
 mv *.err output/logs/
-oarsub -S ./script_python.oar
