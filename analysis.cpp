@@ -89,7 +89,7 @@ void Analysis::ComputeGlobalAverage(IdefixHostArray4D<real> Vin) {
         int glob_i = i + d.gbeg[IDIR] - 2*grid.nghost[IDIR];
         real Sigma_r = radialAverage(Sigma, glob_i);
 
-        loc_globalAverage(Mtot) += 2*M_PI * Sigma_r * dr;         
+        loc_globalAverage(Mtot) += 2*M_PI * r * Sigma_r * dr;         
     }
 
     IdefixHostArray1D<real> glob_globalAverage("glob_globalAverage", global_NVARS);

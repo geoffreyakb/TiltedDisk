@@ -27,11 +27,10 @@ def READ_BOX_AVERAGE():
     V = {}
     i = 0
     for name in varnames:
-        # V[name] = data[:,i]           # TO CHANGE WHENEVER GLOBAL QUANTITIES ARE ADDED
-        V[name] = data[:]
+        V[name] = data[:,i]           
         i += 1
 
-    return V["t"]
+    return V["t"], V["Mtot"]
 
 def READ_RADIAL_AVERAGE(n_average, n_r):
     Sigma = np.zeros((n_average, n_r))
