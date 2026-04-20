@@ -11,5 +11,3 @@ module load cuda/12.9.41.patched openmpi/5.0.8/cuda-12.9-gcc-14.2.0 ucx/1.19.0-c
 mpirun --mca pml ucx --mca osc ucx --mca btl ^openib -np 4 ./idefix
 
 mv *.*.log output/logs/
-mv *.out output/logs/
-mv *.err output/logs/

@@ -7,5 +7,6 @@
 
 cd $OAR_WORKDIR
 source ~/src/postproc-venv/bin/activate
+source ~/applis/site/guix-start.sh
 
 python3 ./postproc.py

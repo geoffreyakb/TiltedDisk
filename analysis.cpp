@@ -61,7 +61,7 @@ void Analysis::ComputeRadialAverage(IdefixHostArray4D<real> Vin) {
                 real ephi_ey = cos(phi);
                 real ephi_ez = ZERO_F;
                 // Filling the local radial averages arrays
-                int glob_i = i + d.gbeg[IDIR] - 2*grid.nghost[IDIR];    // -nghost for the global ghosts -nghost for the local ones (i does not start at 0)
+                int glob_i = i + d.gbeg[IDIR] - 2*grid.nghost[IDIR];    // -nghost for the global ghosts -nghost for the local ones (i does not start at the "local 0")
                 loc_radialAverage(Sigma, glob_i) += Vin(RHO,k,j,i) * r * sin(th) * dth * dphi/(2*M_PI);      // Should be the same definition as Kimmig and Dullemond (2024)
                 loc_radialAverage(Lx, glob_i)    += Lr*er_ex + Lth*eth_ex + Lphi*ephi_ex;
                 loc_radialAverage(Ly, glob_i)    += Lr*er_ey + Lth*eth_ey + Lphi*ephi_ey;
@@ -82,14 +82,17 @@ void Analysis::ComputeRadialAverage(IdefixHostArray4D<real> Vin) {
 void Analysis::ComputeGlobalAverage(IdefixHostArray4D<real> Vin) {
     IdefixHostArray1D<real> loc_globalAverage("loc_globalAverage", global_NVARS);
 
-    for (int i = d.beg[IDIR]; i < d.end[IDIR]; i++){
-        real r = d.x[IDIR](i);
-        real dr = d.dx[IDIR](i);
+    for(int k = d.beg[KDIR]; k < d.end[KDIR] ; k++) {
+        for(int j = d.beg[JDIR]; j < d.end[JDIR] ; j++) {
+            for (int i = d.beg[IDIR]; i < d.end[IDIR]; i++){
+                real r = d.x[IDIR](i);
+                real dr = d.dx[IDIR](i);
+                real th = d.x[JDIR](j);
+                real dth = d.dx[JDIR](j);
+                real phi = d.x[KDIR](k);
+                real dphi = d.dx[KDIR](k);
 
-        int glob_i = i + d.gbeg[IDIR] - 2*grid.nghost[IDIR];
-        real Sigma_r = radialAverage(Sigma, glob_i);
-
-        loc_globalAverage(Mtot) += 2*M_PI * r * Sigma_r * dr;         
+                loc_globalAverage(Mtot) += Vin(RHO,k,j,i) * pow(r,2) * sin(th) * dr * dth * dphi;         
     }
 
     IdefixHostArray1D<real> glob_globalAverage("glob_globalAverage", global_NVARS);
@@ -162,8 +165,8 @@ void Analysis::PerformAnalysis(DataBlock &data) {
     ComputeGlobalAverage(d.Vc);
 
     // Writing averages
-    WriteGlobalAverage(data);
     WriteRadialAverage();
+    WriteGlobalAverage(data);
 
     if (idfx::prank == 0) {
         std::cout << "Analysis: Write average files n°" << std::to_string(this->countAverage) << std::endl;
