@@ -1,15 +1,12 @@
 from src import *
-import numpy as np
-import matplotlib.pyplot as plt
-
 # ----------------------------------------------------------------------------------
 # Plotting parameters
 # ----------------------------------------------------------------------------------
-plt.rcParams.update({
-    "text.usetex": True,
-    'text.latex.preamble':r'\usepackage{amsmath}',
-    "font.family": "Fourier"
-})
+# plt.rcParams.update({
+#     "text.usetex": True,
+#     'text.latex.preamble':r'\usepackage{amsmath}',
+#     "font.family": "Fourier"
+# })
 w = 1.25
 l = 10
 l_log = 6
@@ -20,7 +17,7 @@ l_log = 6
 conf = inifix.load("idefix.ini")
 t_max = conf["TimeIntegrator"]["tstop"]
 n_orbit = 500   # This is an input !
-n_average = int(t_max / conf["Output"]["analysis"]) + 1
+n_average = int(t_max / conf["Output"]["analysis"]) + 1         # t_max must be not divisible by the output rate in order for the +1 to work
 print(n_average)
 r_min = conf["Grid"]["X1-grid"][1]
 r_0 = 2*r_min   # This is a convention !

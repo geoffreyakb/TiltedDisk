@@ -6,7 +6,8 @@
 #OAR --stderr postproc.err
 
 cd $OAR_WORKDIR
+export IDEFIX_DIR=~/src/idefix
 source ~/src/postproc-venv/bin/activate
-source ~/applis/site/guix-start.sh
+source /applis/site/guix-start.sh
 
 python3 ./postproc.py

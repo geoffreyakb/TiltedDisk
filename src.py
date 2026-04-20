@@ -1,23 +1,11 @@
 import os
 import sys
 sys.path.append(os.getenv("IDEFIX_DIR"))
+import csv
 import numpy as np
-import matplotlib as mpl
 import matplotlib.pyplot as plt
-from matplotlib import rc
-import matplotlib.ticker as tkr
-from matplotlib.ticker import MaxNLocator
-from matplotlib.ticker import LogLocator, AutoMinorLocator
-from matplotlib.colors import LogNorm
-from matplotlib.ticker import LogLocator, LogFormatter
-from matplotlib.ticker import NullFormatter
 from pytools.vtk_io import readVTK
 import inifix
-import cv2
-import numpy.fft as fft
-from scipy.stats import binned_statistic
-import csv
-import math
 
 def READ_BOX_AVERAGE():
     fid = open("output/analysis/globalAverage.dat", "r")

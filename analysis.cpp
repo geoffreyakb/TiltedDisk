@@ -92,7 +92,9 @@ void Analysis::ComputeGlobalAverage(IdefixHostArray4D<real> Vin) {
                 real phi = d.x[KDIR](k);
                 real dphi = d.dx[KDIR](k);
 
-                loc_globalAverage(Mtot) += Vin(RHO,k,j,i) * pow(r,2) * sin(th) * dr * dth * dphi;         
+                loc_globalAverage(Mtot) += Vin(RHO,k,j,i) * pow(r,2) * sin(th) * dr * dth * dphi;    
+            }
+        }
     }
 
     IdefixHostArray1D<real> glob_globalAverage("glob_globalAverage", global_NVARS);
