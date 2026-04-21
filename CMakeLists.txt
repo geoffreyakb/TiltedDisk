@@ -1,3 +1,3 @@
-set_idefix_property(Idefix_RECONSTRUCTION Linear)
+set_idefix_property(Idefix_RECONSTRUCTION Lim03)
 add_idefix_source(analysis.hpp)
 add_idefix_source(analysis.cpp)

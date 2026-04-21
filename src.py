@@ -53,8 +53,8 @@ def READ_RADIAL_AVERAGE(n_average, n_r):
         L[i,:,2] = V['Lz']
 
         norm = np.sqrt(L[i,:,0]**2 + L[i,:,1]**2 + L[i,:,2]**2)
-        Tilt[i] = np.arccos(L[i,:,2] / norm) * 180/np.pi
-        Precession[i] = np.arctan2(L[i,:,1], L[i,:,0]) * 180/np.pi
+        Tilt[i,:] = np.arccos(L[i,:,2] / norm) * 180/np.pi
+        Precession[i,:] = np.arctan2(L[i,:,1], L[i,:,0]) * 180/np.pi
         
     return V["r"], Sigma, Tilt, Precession, L
 

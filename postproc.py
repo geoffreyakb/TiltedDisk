@@ -18,7 +18,6 @@ conf = inifix.load("idefix.ini")
 t_max = conf["TimeIntegrator"]["tstop"]
 n_orbit = 500   # This is an input !
 n_average = int(t_max / conf["Output"]["analysis"]) + 1         # t_max must be not divisible by the output rate in order for the +1 to work
-print(n_average)
 r_min = conf["Grid"]["X1-grid"][1]
 r_0 = 2*r_min   # This is a convention !
 r_max = conf["Grid"]["X1-grid"][-1]
