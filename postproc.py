@@ -16,7 +16,8 @@ l_log = 6
 # ----------------------------------------------------------------------------------
 conf = inifix.load("idefix.ini")
 t_max = conf["TimeIntegrator"]["tstop"]
-n_orbit = 500   # This is an input !
+# n_orbit = 500   # This is an input !
+n_orbit = 5
 n_average = int(t_max / conf["Output"]["analysis"]) + 1         # t_max must be not divisible by the output rate in order for the +1 to work
 r_min = conf["Grid"]["X1-grid"][1]
 r_0 = 2*r_min   # This is a convention !
@@ -88,28 +89,6 @@ plt.savefig("./plots/theoretical_profiles.pdf")
 plt.close()
 
 # ----------------------------------------------------------------------------------
-# Plotting global mass
-# ----------------------------------------------------------------------------------
-fig, axs = plt.subplots(1, 1, figsize=(4, 4))
-ax = axs
-ax.plot(t/t_orbit, M_tot, color='tab:blue')
-ax.set_xlim((0, n_orbit))
-min_graph = 0.14
-max_graph = 0.26
-# ax.set_ylim((min_graph, max_graph))
-ax.tick_params(axis='y', which='both', direction='in', right=True, width=w, length=l)
-ax.tick_params(axis='x', which='both', direction='in', top=True, width=w, length=l)
-for spine in ax.spines.values():
-        spine.set_linewidth(w)
-ax.set_xlabel(r"$t/t_\text{orbit}$ [-]")
-ax.set_ylabel(r"$M/M_\odot$ [-]")
-ax.grid()
-
-fig.tight_layout()
-plt.savefig("./plots/M_tot.pdf")
-plt.close()
-
-# ----------------------------------------------------------------------------------
 # Plotting inclination and precession
 # ----------------------------------------------------------------------------------
 fig, axs = plt.subplots(1, 2, figsize=(8, 4))
@@ -146,28 +125,52 @@ plt.savefig("./plots/angles.pdf")
 plt.close()
 
 # ----------------------------------------------------------------------------------
-# Plotting surface density evolution
+# Radial inclination movie
 # ----------------------------------------------------------------------------------
-fig, axs = plt.subplots(1, 1, figsize=(4, 4))
-ax = axs
-ax.plot(r, Sigma[0,:]/Sigma_0, color='tab:blue', label=f"{t[0]/t_orbit:0.1f}" + r" orbits")
-ax.plot(r, Sigma[t.size//4,:]/Sigma_0, color='tab:purple', label=f"{t[t.size//4]/t_orbit:0.1f}" + r" orbits")
-ax.plot(r, Sigma[t.size//2,:]/Sigma_0, color='tab:red', label=f"{t[t.size//2]/t_orbit:0.1f}" + r" orbits")
-ax.plot(r, Sigma[3*t.size//4,:]/Sigma_0, color='tab:orange', label=f"{t[3*t.size//4]/t_orbit:0.1f}" + r" orbits")
-ax.plot(r, Sigma[t.size-1,:]/Sigma_0, color='tab:green', label=f"{t[wh_t_final]/t_orbit:0.1f}" + r" orbits")
-ax.set_xlim((r_min, r_max))
-min_graph = 0.25
-max_graph = 1.75
-ax.set_ylim((min_graph, max_graph))
-ax.tick_params(axis='y', which='both', direction='in', right=True, width=w, length=l)
-ax.tick_params(axis='x', which='both', direction='in', top=True, width=w, length=l)
-for spine in ax.spines.values():
-        spine.set_linewidth(w)
-ax.set_xlabel(r"$r$ [Code Units]")
-ax.set_ylabel(r"$\Sigma/\Sigma_0$ [-]")
-ax.grid()
-ax.legend()
+inclination_plots = []
+mass_plots = []
+for k in range(t.size):
+        params = {
+                        "color1": "tab:blue",
+                        "xmin1": 1,
+                        "xmax1": 10,
+                        "xlabel1": r"$r$ [Code Units]",
+                        "ymin1": 0,
+                        "ymax1": 12,
+                        "ylabel1": r"Inclination [°]",
+                        "color2": "tab:red",
+                        "xmin2": 0,
+                        "xmax2": n_orbit,
+                        "xlabel2": r"$t/t_\text{orbit}$ [-]",
+                        "ymin2": 0,
+                        "ymax2": PrecessionMean.max(),
+                        "ylabel2": r"Mean radial precession [°]",
+                        "title": r"$t/t_\text{orbit} =$ " + f"{t[k]/t_orbit:.2f}",
+                        "savepath": f"./output/plots/inclination_{k}.png"
+        }
+        PLOT_PROFILE(r, Tilt[k,:], t[0:k]/t_orbit, PrecessionMean[0:k], params)
+        inclination_plots.append(params["savepath"])
 
-fig.tight_layout()
-plt.savefig("./plots/sigma.pdf")
-plt.close()
+        params = {
+                        "color1": "tab:green",
+                        "xmin1": 1,
+                        "xmax1": 10,
+                        "xlabel1": r"$r$ [Code Units]",
+                        "ymin1": 0.2,
+                        "ymax1": 1.8,
+                        "ylabel1": r"$\Sigma/\Sigma_0$ [-]",
+                        "color2": "tab:purple",
+                        "xmin2": 0,
+                        "xmax2": n_orbit,
+                        "xlabel2": r"$t/t_\text{orbit}$ [-]",
+                        "ymin2": 16,
+                        "ymax2": 16.2,
+                        "ylabel2": r"$M/M_\odot$ [-]",
+                        "title": r"$t/t_\text{orbit} =$ " + f"{t[k]/t_orbit:.2f}",
+                        "savepath": f"./output/plots/mass_{k}.png"
+        }
+        PLOT_PROFILE(r, Sigma[k,:]/Sigma_0, t[0:k]/t_orbit, M_tot[0:k]/1, params)        
+        mass_plots.append(params["savepath"])
+
+MOVIE(inclination_plots, "inclination")
+MOVIE(mass_plots, "mass")

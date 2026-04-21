@@ -4,7 +4,9 @@
 
 real epsilonGlob;
 real alphaGlob;
-real tiltGlob;
+real tiltMaxGlob;
+real rWarpGlob;
+real rWidthGlob; 
 real densityFloorGlob;
 
 Analysis *analysis;
@@ -17,7 +19,9 @@ void MySoundSpeed(DataBlock &data, const real t, IdefixArray3D<real> &cs) {
     IdefixArray1D<real> th = data.x[JDIR];
     IdefixArray1D<real> phi = data.x[KDIR];
     real epsilon = epsilonGlob;
-    real tilt = tiltGlob * M_PI / 180.0;    // Conversion in radians
+    real tiltMax = tiltMaxGlob * M_PI / 180.0;    // Conversion in radians
+    real rWarp = rWarpGlob;
+    real rWidth = rWidthGlob;
 
     idefix_for("MySoundSpeed",0,data.np_tot[KDIR],0,data.np_tot[JDIR],0,data.np_tot[IDIR],
                 KOKKOS_LAMBDA (int k, int j, int i) {
@@ -26,6 +30,7 @@ void MySoundSpeed(DataBlock &data, const real t, IdefixArray3D<real> &cs) {
                     real y = r(i) * sin(th(j)) * sin(phi(k));
                     real z = r(i) * cos(th(j));
                     // Rotation around the x-axis (the -tilt is for a clockwise rotation around the x-axis if you set a positive angle)
+                    real tilt = 0.5 * tiltMax * (tanh((r(i) - rWarp)/rWidth) + 1);
                     real xUnt = x;
                     real yUnt = cos(-tilt)*y - sin(-tilt)*z;
                     real zUnt = sin(-tilt)*y + cos(-tilt)*z;
@@ -45,7 +50,9 @@ void MyViscosity(DataBlock &data, const real t, IdefixArray3D<real> &eta1, Idefi
     IdefixArray1D<real> phi = data.x[KDIR];
     real epsilon = epsilonGlob;
     real alpha = alphaGlob;
-    real tilt = tiltGlob * M_PI / 180.0;
+    real tiltMax = tiltMaxGlob * M_PI / 180.0;    // Conversion in radians
+    real rWarp = rWarpGlob;
+    real rWidth = rWidthGlob;
 
     idefix_for("MyViscosity",0,data.np_tot[KDIR],0,data.np_tot[JDIR],0,data.np_tot[IDIR],
                 KOKKOS_LAMBDA (int k, int j, int i) {
@@ -54,6 +61,7 @@ void MyViscosity(DataBlock &data, const real t, IdefixArray3D<real> &eta1, Idefi
                     real y = r(i) * sin(th(j)) * sin(phi(k));
                     real z = r(i) * cos(th(j));
                     // Rotation around the x-axis (the -tilt is for a clockwise rotation around the x-axis if you set a positive angle)
+                    real tilt = 0.5 * tiltMax * (tanh((r(i) - rWarp)/rWidth) + 1);
                     real xUnt = x;
                     real yUnt = cos(-tilt)*y - sin(-tilt)*z;
                     real zUnt = sin(-tilt)*y + cos(-tilt)*z;
@@ -87,7 +95,9 @@ void InternalBoundary(Hydro *hydro, const real t) {
 Setup::Setup(Input &input, Grid &grid, DataBlock &data, Output &output) {
     epsilonGlob = input.Get<real>("Setup", "epsilon", 0);
     alphaGlob = input.Get<real>("Setup", "alpha", 0);
-    tiltGlob = input.Get<real>("Setup", "tilt", 0);
+    tiltMaxGlob = input.Get<real>("Setup", "tiltMax", 0);
+    rWarpGlob = input.Get<real>("Setup", "rWarp", 0);
+    rWidthGlob = input.Get<real>("Setup", "rWidth", 0);
     densityFloorGlob = input.Get<real>("Setup", "densityFloor", 0);
 
     data.hydro->EnrollInternalBoundary(&InternalBoundary);
@@ -101,7 +111,9 @@ Setup::Setup(Input &input, Grid &grid, DataBlock &data, Output &output) {
 void Setup::InitFlow(DataBlock &data) {
     DataBlockHost d(data);
     real epsilon = epsilonGlob;
-    real tilt = tiltGlob * M_PI / 180.0;    // Conversion in radians
+    real tiltMax = tiltMaxGlob * M_PI / 180.0;    // Conversion in radians
+    real rWarp = rWarpGlob;
+    real rWidth = rWidthGlob;
 
     real r, th, phi;
     real x, y, z;
@@ -133,6 +145,7 @@ void Setup::InitFlow(DataBlock &data) {
                 y = r * sin(th) * sin(phi);
                 z = r * cos(th);
                 // Rotation around the x-axis (the -tilt is for a clockwise rotation around the x-axis if you set a positive angle)
+                real tilt = 0.5 * tiltMax * (tanh((r - rWarp)/rWidth) + 1);
                 xUnt = cos(-tilt)*x + sin(-tilt)*z;
                 yUnt = y;
                 zUnt = -sin(-tilt)*x + cos(-tilt)*z;
