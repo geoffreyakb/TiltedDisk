@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pytools.vtk_io import readVTK
 import inifix
+import cv2
 
 def READ_BOX_AVERAGE():
     fid = open("output/analysis/globalAverage.dat", "r")
@@ -92,3 +93,51 @@ def READ_VTK(n_vtk):
     v_phi = vtk[VX3,:,:,:]
 
     return rho, v_r, v_theta, v_phi
+
+def PLOT(x1, y1, x2, y2, params):
+    w, l = 1.25, 10
+    fig, axs = plt.subplots(1, 2, figsize=(8, 4))
+
+    ax = axs[0]
+    ax.plot(x1, y1, color=params["color1"])
+    ax.set_xlim((params["xmin1"], params["xmax1"]))
+    ax.set_xlabel(params["xlabel1"])
+    ax.set_ylim((params["ymin1"], params["ymax1"]))
+    ax.set_ylabel(params["ylabel1"])
+    ax.tick_params(axis='y', which='both', direction='in', right=True, width=w, length=l)
+    ax.tick_params(axis='x', which='both', direction='in', top=True, width=w, length=l)
+    for spine in ax.spines.values():
+            spine.set_linewidth(w)
+    ax.grid()
+
+    ax = axs[1]
+    ax.plot(x2, y2, color=params["color2"])
+    ax.set_xlim((params["xmin2"], params["xmax2"]))
+    ax.set_xlabel(params["xlabel2"])
+    ax.set_ylim((params["ymin2"], params["ymax2"]))
+    ax.set_ylabel(params["ylabel2"])
+    ax.tick_params(axis='y', which='both', direction='in', right=True, width=w, length=l)
+    ax.tick_params(axis='x', which='both', direction='in', top=True, width=w, length=l)
+    for spine in ax.spines.values():
+            spine.set_linewidth(w)
+    ax.grid()
+
+    if params["title"] != None:
+        fig.suptitle(params["title"], x=0.515, y=0.925)
+    fig.tight_layout()
+    if params["savetype"] == "pdf":
+        plt.savefig(params["savepath"], bbox_inches='tight')
+    elif params["savetype"] == "png":
+        plt.savefig(params["savepath"], bbox_inches='tight', dpi=300)
+    plt.close()
+
+def MOVIE(plots, name):
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    fps = 20
+    images = plots
+    height, width, _ = cv2.imread(images[0]).shape
+    video_summary = cv2.VideoWriter(filename=f"./plots/{name}.mp4", fourcc=fourcc, fps=fps, frameSize=(width, height))
+    for image in images:
+        video_summary.write(cv2.imread(image))
+    cv2.destroyAllWindows()
+    video_summary.release()
