@@ -94,7 +94,7 @@ def READ_VTK(n_vtk):
 
     return rho, v_r, v_theta, v_phi
 
-def PLOT_PROFILE(x1, y1, x2, y2, params):
+def PLOT(x1, y1, x2, y2, params):
     w, l = 1.25, 10
     fig, axs = plt.subplots(1, 2, figsize=(8, 4))
 
@@ -122,14 +122,18 @@ def PLOT_PROFILE(x1, y1, x2, y2, params):
             spine.set_linewidth(w)
     ax.grid()
 
-    fig.suptitle(params["title"], x=0.515, y=0.925)
+    if params["title"] != None:
+        fig.suptitle(params["title"], x=0.515, y=0.925)
     fig.tight_layout()
-    plt.savefig(params["savepath"], bbox_inches='tight', dpi=250)
+    if params["savetype"] == "pdf":
+        plt.savefig(params["savepath"], bbox_inches='tight')
+    elif params["savetype"] == "png":
+        plt.savefig(params["savepath"], bbox_inches='tight', dpi=300)
     plt.close()
 
 def MOVIE(plots, name):
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    fps = 60
+    fps = 20
     images = plots
     height, width, _ = cv2.imread(images[0]).shape
     video_summary = cv2.VideoWriter(filename=f"./plots/{name}.mp4", fourcc=fourcc, fps=fps, frameSize=(width, height))
