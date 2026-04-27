@@ -79,9 +79,37 @@ void InternalBoundary(Hydro *hydro, const real t) {
                 0, data->np_tot[IDIR],
                 KOKKOS_LAMBDA (int k, int j, int i) {
                     if(Vc(RHO,k,j,i) < densityFloor) {
-                        Vc(RHO,k,j,i)=densityFloor;
+                        Vc(RHO,k,j,i) = densityFloor;
                     }
                 });
+}
+
+void GravitomagneticTerm(Hydro *hydro, const real t, const real dtin) {
+    auto *data = hydro->data;
+    IdefixArray4D<real> Vc = hydro->Vc;
+    IdefixArray4D<real> Uc = hydro->Uc;
+    IdefixArray1D<real> x1 = data->x[IDIR];
+    IdefixArray1D<real> x2 = data->x[JDIR];
+    IdefixArray1D<real> x3 = data->x[KDIR];
+    real epsilon = epsilonGlob;
+    real alpha = alphaGlob;
+    real tilt = tiltGlob * M_PI / 180.0;    // Conversion in radians
+
+    idefix_for("GravitomagneticTerm",
+        0, data->np_tot[KDIR],
+        0, data->np_tot[JDIR],
+        0, data->np_tot[IDIR],
+        KOKKOS_LAMBDA (int k, int j, int i) {
+            real r = x1(i);
+            real th = x2(j);
+            real phi = x3(k);
+
+            real z=r*cos(th);
+            real R=r*sin(th);
+            real R0=FMAX(R,Rin);
+
+            Uc(ENG,k,j,i) += -dt*(Vc(PRS,k,j,i)-Ptarget)/(tau*gamma_m1);
+    });
 }
 
 Setup::Setup(Input &input, Grid &grid, DataBlock &data, Output &output) {
@@ -93,6 +121,7 @@ Setup::Setup(Input &input, Grid &grid, DataBlock &data, Output &output) {
     data.hydro->EnrollInternalBoundary(&InternalBoundary);
     data.hydro->EnrollIsoSoundSpeed(&MySoundSpeed);
     data.hydro->viscosity->EnrollViscousDiffusivity(&MyViscosity);
+    data.hydro->EnrollUserSourceTerm(&GravitomagneticTerm);
 
     analysis = new Analysis(input, grid, data);
     output.EnrollAnalysis(&AnalysisFunction);
