@@ -103,14 +103,14 @@ for k in range(t.size):
                     "xmin2": 0,
                     "xmax2": n_orbit,
                     "xlabel2": r"$t/t_\text{orbit}$ [-]",
-                    "ymin2": M_tot.min()*0.95/1,
-                    "ymax2": M_tot.max()*1.05/1,
-                    "ylabel2": r"$M/M_\odot$ [-]",
+                    "ymin2": M_tot.min()*0.95/M_tot[0],
+                    "ymax2": M_tot.max()*1.05/M_tot[0],
+                    "ylabel2": r"$M/M_0$ [-]",
                     "title": r"$t/t_\text{orbit} =$ " + f"{t[k]/t_orbit:.2f}",
                     "savetype": "png",
                     "savepath": f"./output/plots/mass_{k}.png"
         }
-        PLOT(r, Sigma[k,:]/Sigma_0, t[0:k]/t_orbit, M_tot[0:k]/1, params)        
+        PLOT(r, Sigma[k,:]/Sigma_0, t[0:k]/t_orbit, M_tot[0:k]/M_tot[0], params)        
         mass_plots.append(params["savepath"])
 
 MOVIE(inclination_plots, "inclination")
