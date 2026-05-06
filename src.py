@@ -94,7 +94,7 @@ def READ_VTK(n_vtk):
 
     return rho, v_r, v_theta, v_phi
 
-def PLOT(x1, y1, x2, y2, params):
+def PLOT(x1, y1, x2, y2, params, a=None):
     w, l = 1.25, 10
     fig, axs = plt.subplots(1, 2, figsize=(8, 4))
 
@@ -109,6 +109,9 @@ def PLOT(x1, y1, x2, y2, params):
     for spine in ax.spines.values():
             spine.set_linewidth(w)
     ax.grid()
+    if a != None:
+        ax.vlines(ISCO(x1,a), params["ymin1"], params["ymax1"], colors=params["vline_color"], linestyle="dashed", label=params["vline_label"])
+        ax.legend()
 
     ax = axs[1]
     ax.plot(x2, y2, color=params["color2"])
@@ -141,3 +144,27 @@ def MOVIE(plots, name):
         video_summary.write(cv2.imread(image))
     cv2.destroyAllWindows()
     video_summary.release()
+
+CST_G, CST_M, CST_C = 1, 1, 1
+R_g = CST_G*CST_M/CST_C**2
+def ISCO(r, a):
+    chi = a * CST_G**2 * CST_M**2 / CST_C**3
+
+    a = r
+    # Source term
+    b = 2*chi / r**2
+    # Einstein potential
+    c = - CST_G*CST_M/r**2 * (1 + 6*R_g/r)
+    # Paczyński–Wiita potential
+    # c = - CST_G*CST_M/(r - 2*R_g)**2
+    delta = b**2 - 4*a*c
+
+    Omega_p = (-b + np.sqrt(delta)) / (2*a)
+    partial_r_Omega_p = np.gradient(Omega_p, r)
+    kappa2_p = 4*Omega_p**2 + 2*r*Omega_p*partial_r_Omega_p
+
+    # For the Einstein potential
+    return r[np.where(kappa2_p > 0)[0][0]]
+    # For the Paczyński–Wiita potential (stable orbits can occur below the Schwarzschild radius, but are not physical)
+    # r2 = r[np.where(kappa2_p > 0)[0][0]]
+    # return r2[np.where[r2 > 2][0][0]]

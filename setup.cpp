@@ -21,8 +21,7 @@ void MySoundSpeed(DataBlock &data, const real t, IdefixArray3D<real> &cs) {
 
     idefix_for("MySoundSpeed",0,data.np_tot[KDIR],0,data.np_tot[JDIR],0,data.np_tot[IDIR],
                 KOKKOS_LAMBDA (int k, int j, int i) {
-                    real R = r(i) * sin(th(j));
-                    cs(k,j,i) = epsilon / sqrt(R);
+                    cs(k,j,i) = epsilon / sqrt(r(i));
                 });
 }
 
@@ -36,9 +35,8 @@ void MyViscosity(DataBlock &data, const real t, IdefixArray3D<real> &eta1, Idefi
 
     idefix_for("MyViscosity",0,data.np_tot[KDIR],0,data.np_tot[JDIR],0,data.np_tot[IDIR],
                 KOKKOS_LAMBDA (int k, int j, int i) {
-                    real R = r(i) * sin(th(j));
-                    real cs = epsilon / sqrt(R);
-                    eta1(k,j,i) = alpha * cs * epsilon * R * Vc(RHO,k,j,i);
+                    real cs = epsilon / sqrt(r(i));
+                    eta1(k,j,i) = alpha * cs * epsilon * r(i) * Vc(RHO,k,j,i);
                     eta2(k,j,i) = ZERO_F;
               });
 }
@@ -113,6 +111,14 @@ void EinsteinPotential(DataBlock &data, const real t, IdefixArray1D<real> &x1, I
     });
 }
 
+void PaczynskiWiitaPotential(DataBlock &data, const real t, IdefixArray1D<real> &x1, IdefixArray1D<real> &x2, IdefixArray1D<real> &x3, IdefixArray3D<real> &phi) {
+    idefix_for("PaczynskiWiitaPotential",0,data.np_tot[KDIR],0,data.np_tot[JDIR],0,data.np_tot[IDIR],
+        KOKKOS_LAMBDA (int k, int j, int i) {
+            real r = x1(i);
+            phi(k,j,i) = - 1/(r - 2);
+    });
+}
+
 Setup::Setup(Input &input, Grid &grid, DataBlock &data, Output &output) {
     epsilonGlob = input.Get<real>("Setup", "epsilon", 0);
     alphaGlob = input.Get<real>("Setup", "alpha", 0);
@@ -125,6 +131,7 @@ Setup::Setup(Input &input, Grid &grid, DataBlock &data, Output &output) {
     data.hydro->viscosity->EnrollViscousDiffusivity(&MyViscosity);
     data.hydro->EnrollUserSourceTerm(&GravitomagneticTerm);
     data.gravity->EnrollPotential(&EinsteinPotential);
+    // data.gravity->EnrollPotential(&PaczynskiWiitaPotential);
 
     analysis = new Analysis(input, grid, data);
     output.EnrollAnalysis(&AnalysisFunction);
@@ -133,6 +140,7 @@ Setup::Setup(Input &input, Grid &grid, DataBlock &data, Output &output) {
 void Setup::InitFlow(DataBlock &data) {
     DataBlockHost d(data);
     real epsilon = epsilonGlob;
+    real densityFloor = densityFloorGlob;
     real r, th, phi;    
 
     for(int k = 0; k < d.np_tot[KDIR]; k++) {
@@ -149,7 +157,7 @@ void Setup::InitFlow(DataBlock &data) {
                 d.Vc(RHO,k,j,i) = 1.0/(R * sqrt(R)) * exp(1.0/pow(cs,2) * (1/r - 1/R));
                 d.Vc(VX1,k,j,i) = ZERO_F;
                 d.Vc(VX2,k,j,i) = ZERO_F;
-                d.Vc(VX3,k,j,i) = Vk * sqrt(R/r - 2.5*pow(epsilon,2));
+                d.Vc(VX3,k,j,i) = Vk * exp(1.0/pow(cs,2) * (1/r - 1/R));
             }
         }
     }
