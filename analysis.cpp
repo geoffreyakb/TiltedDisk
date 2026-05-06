@@ -1,6 +1,7 @@
 #include "analysis.hpp"
 #include "idefix.hpp"
 #include "fluid.hpp"
+#include "dump.hpp"
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -30,6 +31,8 @@ Analysis::Analysis(Input &input, Grid &grid, DataBlock &data) : grid(grid), gh(g
     this->global_NVARS = 1;
     this->Mtot = 0;
     this->globalAverage = IdefixHostArray1D<real> ("globalAverage", global_NVARS);
+    
+    data.dump->RegisterVariable(&countAverage, "analysis_count_average");
 }
 
 void Analysis::ComputeRadialAverage(IdefixHostArray4D<real> Vin) {
