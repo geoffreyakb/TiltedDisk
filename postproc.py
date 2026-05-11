@@ -37,7 +37,7 @@ for i in range(t.size):
 # Calculating the normalizators
 r_0 = 2*r_min   # This is an input !
 Sigma_0 = Sigma[0,np.where(r >= r_0)[0][0]]     # This is a simple convention
-t_orbit = 2*np.pi*r_0 / np.sqrt(1/r_0 - 2.5*epsilon_0**2)       # This is an input
+t_orbit = 2*np.pi*(r_0**1.5) / np.sqrt(1 - 2.5*epsilon_0**2)       # This is an input
 n_orbit = 500   # This is an input !
 wh_t_final = np.where(t/t_orbit >= n_orbit)[0][0]
 
