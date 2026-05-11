@@ -65,8 +65,6 @@ void GravitomagneticTerm(Hydro *hydro, const real t, const real dtin) {
     IdefixArray1D<real> x2 = data->x[JDIR];
     IdefixArray1D<real> x3 = data->x[KDIR];
     real dt = dtin;
-    real epsilon = epsilonGlob;
-    real alpha = alphaGlob;
 
     real tilt = tiltGlob * M_PI / 180.0;    // Conversion in radians
     real spin = spinGlob;
@@ -140,15 +138,14 @@ Setup::Setup(Input &input, Grid &grid, DataBlock &data, Output &output) {
 void Setup::InitFlow(DataBlock &data) {
     DataBlockHost d(data);
     real epsilon = epsilonGlob;
-    real densityFloor = densityFloorGlob;
-    real r, th, phi;    
+    real spin = spinGlob;
+    real r, th;
 
     for(int k = 0; k < d.np_tot[KDIR]; k++) {
         for(int j = 0; j < d.np_tot[JDIR]; j++) {
             for(int i = 0; i < d.np_tot[IDIR]; i++) {                
                 r = d.x[IDIR](i);
                 th = d.x[JDIR](j);
-                phi = d.x[KDIR](k);
 
                 real R = r*sin(th);
                 real Vk = 1.0/sqrt(R);
@@ -157,7 +154,7 @@ void Setup::InitFlow(DataBlock &data) {
                 d.Vc(RHO,k,j,i) = 1.0/(R * sqrt(R)) * exp(1.0/pow(cs,2) * (1/r - 1/R));
                 d.Vc(VX1,k,j,i) = ZERO_F;
                 d.Vc(VX2,k,j,i) = ZERO_F;
-                d.Vc(VX3,k,j,i) = Vk * exp(1.0/pow(cs,2) * (1/r - 1/R));
+                d.Vc(VX3,k,j,i) = pow(Vk,4) * (sqrt(pow(spin,2) + pow(R,3)) - spin) * cos(th);
             }
         }
     }
