@@ -138,7 +138,6 @@ Setup::Setup(Input &input, Grid &grid, DataBlock &data, Output &output) {
 void Setup::InitFlow(DataBlock &data) {
     DataBlockHost d(data);
     real epsilon = epsilonGlob;
-    real spin = spinGlob;
     real r, th;
 
     for(int k = 0; k < d.np_tot[KDIR]; k++) {
@@ -154,8 +153,13 @@ void Setup::InitFlow(DataBlock &data) {
                 d.Vc(RHO,k,j,i) = 1.0/(R * sqrt(R)) * exp(1.0/pow(cs,2) * (1/r - 1/R));
                 d.Vc(VX1,k,j,i) = ZERO_F;
                 d.Vc(VX2,k,j,i) = ZERO_F;
-                d.Vc(VX3,k,j,i) = pow(Vk,4) * (sqrt(pow(spin,2) + pow(R,3)) - spin) * cos(th);
-            }
+		if (sin(th) > 2.5*pow(epsilon, 2)) {
+	            d.Vc(VX3,k,j,i) = Vk * sqrt(sin(th) - 2.5*pow(epsilon, 2));
+            	}
+		else {
+		    d.Vc(VX3,k,j,i) = ZERO_F;
+		}
+	    }
         }
     }
 
