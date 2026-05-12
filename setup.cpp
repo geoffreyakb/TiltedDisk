@@ -123,7 +123,7 @@ void Setup::InitFlow(DataBlock &data) {
                 x = r * sin(th) * cos(phi);
                 y = r * sin(th) * sin(phi);
                 z = r * cos(th);
-                // Rotation around the x-axis (the -tilt is for a clockwise rotation around the x-axis if you set a positive angle)
+                // Rotation around the y-axis (the -tilt is for a clockwise rotation around the y-axis if you set a positive angle)
                 xUnt = cos(-tilt)*x + sin(-tilt)*z;
                 yUnt = y;
                 zUnt = -sin(-tilt)*x + cos(-tilt)*z;
@@ -133,15 +133,15 @@ void Setup::InitFlow(DataBlock &data) {
                 phiUnt = atan2(yUnt,xUnt);
 
                 // Useful parameters
-                real R = r*sin(th);
+                real R = rUnt*sin(thUnt);
                 real Vk = 1.0/sqrt(R);
                 real cs = epsilon/sqrt(R);
                 // Physical value in the untilted version of the disk
-                rhoUnt = 1.0/(R * sqrt(R)) * exp(1.0/pow(cs,2) * (1/r - 1/R));
+                rhoUnt = 1.0/(R * sqrt(R)) * exp(1.0/pow(cs,2) * (1/rUnt - 1/R));
                 VrUnt = ZERO_F;
                 VthUnt  = ZERO_F;
                 if (sin(thUnt) > 2.5*pow(epsilon, 2)) {
-                        VphiUnt = Vk * sqrt(sin(th) - 2.5*pow(epsilon, 2));
+                        VphiUnt = Vk * sqrt(sin(thUnt) - 2.5*pow(epsilon, 2));
                 }
                 else {
                     VphiUnt = ZERO_F;
