@@ -17,6 +17,7 @@ Analysis::Analysis(Input &input, Grid &grid, DataBlock &data) : grid(grid), gh(g
     this->alpha = input.Get<real>("Setup","alpha",0);
     // Output formatting
     this->countAverage = 0;
+    data.dump->RegisterVariable(&countAverage, "analysis_count_average");
     this->precision = 10;
     this->column_width = 2*precision;
     this->pathAnalysisFolder = "output/analysis/";
@@ -31,8 +32,6 @@ Analysis::Analysis(Input &input, Grid &grid, DataBlock &data) : grid(grid), gh(g
     this->global_NVARS = 1;
     this->Mtot = 0;
     this->globalAverage = IdefixHostArray1D<real> ("globalAverage", global_NVARS);
-    
-    data.dump->RegisterVariable(&countAverage, "analysis_count_average");
 }
 
 void Analysis::ComputeRadialAverage(IdefixHostArray4D<real> Vin) {
