@@ -132,7 +132,7 @@ void Setup::InitFlow(DataBlock &data) {
                 x = r * sin(th) * cos(phi);
                 y = r * sin(th) * sin(phi);
                 z = r * cos(th);
-                // Rotation around the x-axis (the -tilt is for a clockwise rotation around the x-axis if you set a positive angle)
+                // Rotation around the y-axis (the -tilt is for a counterclockwise rotation around the y-axis if you set a positive angle)
                 xUnt = cos(-tilt)*x + sin(-tilt)*z;
                 yUnt = y;
                 zUnt = -sin(-tilt)*x + cos(-tilt)*z;
