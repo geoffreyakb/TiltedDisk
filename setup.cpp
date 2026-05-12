@@ -57,50 +57,6 @@ void InternalBoundary(Hydro *hydro, const real t) {
                 });
 }
 
-void GravitomagneticTerm(Hydro *hydro, const real t, const real dtin) {
-    auto *data = hydro->data;
-    IdefixArray4D<real> Vc = hydro->Vc;
-    IdefixArray4D<real> Uc = hydro->Uc;
-    IdefixArray1D<real> x1 = data->x[IDIR];
-    IdefixArray1D<real> x2 = data->x[JDIR];
-    IdefixArray1D<real> x3 = data->x[KDIR];
-    real dt = dtin;
-
-    real tilt = tiltGlob * M_PI / 180.0;    // Conversion in radians
-    real spin = spinGlob;
-    // -tilt so that the disk is "rotated" counterclockwise
-    real Sx = spin * sin(-tilt);
-    real Sy = ZERO_F;
-    real Sz = spin * cos(-tilt);
-
-    idefix_for("GravitomagneticTerm",
-        0, data->np_tot[KDIR],
-        0, data->np_tot[JDIR],
-        0, data->np_tot[IDIR],
-        KOKKOS_LAMBDA (int k, int j, int i) {
-            real r = x1(i);
-            real th = x2(j);
-            real phi = x3(k);
-            real Vr = Vc(VX1,k,j,i);
-            real Vth = Vc(VX2,k,j,i);
-            real Vphi = Vc(VX3,k,j,i);
-
-            real Sr = sin(th)*cos(phi)*Sx + sin(th)*sin(phi)*Sy + cos(th)*Sz;
-            real Sth = cos(th)*cos(phi)*Sx + cos(th)*sin(phi)*Sy - sin(th)*Sz;
-            real Sphi = - sin(phi)*Sx + cos(phi)*Sy;
-            real hr = -4*Sr / pow(r,3);
-            real hth = 2*Sth / pow(r,3);
-            real hphi = 2*Sphi / pow(r,3);
-            real Vcrossh_r = Vth*hphi - Vphi*hth;
-            real Vcrossh_th = Vphi*hr - Vr*hphi;
-            real Vcrossh_phi = Vr*hth - Vth*hr;
-
-            Uc(MX1,k,j,i) += dt * Vc(RHO,k,j,i) * Vcrossh_r;
-            Uc(MX2,k,j,i) += dt * Vc(RHO,k,j,i) * Vcrossh_th;
-            Uc(MX3,k,j,i) += dt * Vc(RHO,k,j,i) * Vcrossh_phi;
-    });
-}
-
 void EinsteinPotential(DataBlock &data, const real t, IdefixArray1D<real> &x1, IdefixArray1D<real> &x2, IdefixArray1D<real> &x3, IdefixArray3D<real> &phi) {
     idefix_for("EinsteinPotential",0,data.np_tot[KDIR],0,data.np_tot[JDIR],0,data.np_tot[IDIR],
         KOKKOS_LAMBDA (int k, int j, int i) {
@@ -127,8 +83,7 @@ Setup::Setup(Input &input, Grid &grid, DataBlock &data, Output &output) {
     data.hydro->EnrollInternalBoundary(&InternalBoundary);
     data.hydro->EnrollIsoSoundSpeed(&MySoundSpeed);
     data.hydro->viscosity->EnrollViscousDiffusivity(&MyViscosity);
-    data.hydro->EnrollUserSourceTerm(&GravitomagneticTerm);
-    data.gravity->EnrollPotential(&EinsteinPotential);
+    // data.gravity->EnrollPotential(&EinsteinPotential);
     // data.gravity->EnrollPotential(&PaczynskiWiitaPotential);
 
     analysis = new Analysis(input, grid, data);
@@ -138,28 +93,99 @@ Setup::Setup(Input &input, Grid &grid, DataBlock &data, Output &output) {
 void Setup::InitFlow(DataBlock &data) {
     DataBlockHost d(data);
     real epsilon = epsilonGlob;
-    real r, th;
+    real tilt = tiltGlob * M_PI / 180.0;    // Conversion in radians
+
+    real r, th, phi;
+    real x, y, z;
+    real xUnt, yUnt, zUnt;
+    real rUnt, thUnt, phiUnt;
+
+    real rhoUnt, VrUnt, VthUnt, VphiUnt;
+    real er_ex, er_ey, er_ez;
+    real eth_ex, eth_ey, eth_ez;
+    real ephi_ex, ephi_ey, ephi_ez;
+    real VxUnt, VyUnt, VzUnt;
+
+    real Vx, Vy, Vz;
+    real ex_er, ex_eth, ex_ephi;
+    real ey_er, ey_eth, ey_ephi;
+    real ez_er, ez_eth, ez_ephi;
+    real Vr, Vth, Vphi;
 
     for(int k = 0; k < d.np_tot[KDIR]; k++) {
         for(int j = 0; j < d.np_tot[JDIR]; j++) {
             for(int i = 0; i < d.np_tot[IDIR]; i++) {                
+                // Spherical coordinates
                 r = d.x[IDIR](i);
                 th = d.x[JDIR](j);
+                phi = d.x[KDIR](k);
+                // Cartesian coordinates
+                x = r * sin(th) * cos(phi);
+                y = r * sin(th) * sin(phi);
+                z = r * cos(th);
+                // Rotation around the x-axis (the -tilt is for a clockwise rotation around the x-axis if you set a positive angle)
+                xUnt = cos(-tilt)*x + sin(-tilt)*z;
+                yUnt = y;
+                zUnt = -sin(-tilt)*x + cos(-tilt)*z;
+                // Back to spherical coordinates
+                rUnt = sqrt(xUnt*xUnt + yUnt*yUnt + zUnt*zUnt);
+                thUnt = acos(zUnt/rUnt);
+                phiUnt = atan2(yUnt,xUnt);
 
+                // Useful parameters
                 real R = r*sin(th);
                 real Vk = 1.0/sqrt(R);
                 real cs = epsilon/sqrt(R);
+                // Physical value in the untilted version of the disk
+                rhoUnt = 1.0/(R * sqrt(R)) * exp(1.0/pow(cs,2) * (1/r - 1/R));
+                VrUnt = ZERO_F;
+                VthUnt  = ZERO_F;
+                if (sin(thUnt) > 2.5*pow(epsilon, 2)) {
+                        VphiUnt = Vk * sqrt(sin(th) - 2.5*pow(epsilon, 2));
+                }
+                else {
+                    VphiUnt = ZERO_F;
+                }
 
-                d.Vc(RHO,k,j,i) = 1.0/(R * sqrt(R)) * exp(1.0/pow(cs,2) * (1/r - 1/R));
-                d.Vc(VX1,k,j,i) = ZERO_F;
-                d.Vc(VX2,k,j,i) = ZERO_F;
-		if (sin(th) > 2.5*pow(epsilon, 2)) {
-	            d.Vc(VX3,k,j,i) = Vk * sqrt(sin(th) - 2.5*pow(epsilon, 2));
-            	}
-		else {
-		    d.Vc(VX3,k,j,i) = ZERO_F;
-		}
-	    }
+                // Expressing spherical unit vectors as cartesian ones (dot products)
+                er_ex = sin(thUnt)*cos(phiUnt);
+                er_ey = sin(thUnt)*sin(phiUnt);
+                er_ez = cos(thUnt);
+                eth_ex = cos(thUnt)*cos(phiUnt);
+                eth_ey = cos(thUnt)*sin(phiUnt);
+                eth_ez = -sin(thUnt);
+                ephi_ex = -sin(phiUnt);
+                ephi_ey = cos(phiUnt);
+                ephi_ez = ZERO_F;
+                // Cartesian untilted velocity
+                VxUnt = VrUnt*er_ex + VthUnt*eth_ex + VphiUnt*ephi_ex;
+                VyUnt = VrUnt*er_ey + VthUnt*eth_ey + VphiUnt*ephi_ey;
+                VzUnt = VrUnt*er_ez + VthUnt*eth_ez + VphiUnt*ephi_ez;
+                // Cartesian tilted velocity
+                Vx = cos(tilt)*VxUnt + sin(tilt)*VzUnt;
+                Vy = VyUnt;
+                Vz = -sin(tilt)*VxUnt + cos(tilt)*VzUnt;      
+
+                // Expressing cartesian unit vectors as spherical ones (dot products)
+                ex_er = sin(th)*cos(phi);
+                ex_eth = cos(th)*cos(phi);
+                ex_ephi = -sin(phi);
+                ey_er = sin(th)*sin(phi);
+                ey_eth = cos(th)*sin(phi);
+                ey_ephi = cos(phi);
+                ez_er = cos(th);
+                ez_eth = -sin(th);
+                ez_ephi = ZERO_F;
+                // Final spherical velocity
+                Vr = Vx*ex_er + Vy*ey_er + Vz*ez_er;
+                Vth = Vx*ex_eth + Vy*ey_eth + Vz*ez_eth;
+                Vphi = Vx*ex_ephi + Vy*ey_ephi + Vz*ez_ephi;
+
+                d.Vc(RHO,k,j,i) = rhoUnt;
+                d.Vc(VX1,k,j,i) = Vr;
+                d.Vc(VX2,k,j,i) = Vth;
+                d.Vc(VX3,k,j,i) = Vphi;
+	        }
         }
     }
 
