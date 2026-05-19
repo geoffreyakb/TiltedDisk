@@ -57,6 +57,49 @@ void InternalBoundary(Hydro *hydro, const real t) {
                 });
 }
 
+void GravitomagneticTerm(Hydro *hydro, const real t, const real dtin) {
+    auto *data = hydro->data;
+    IdefixArray4D<real> Vc = hydro->Vc;
+    IdefixArray4D<real> Uc = hydro->Uc;
+    IdefixArray1D<real> x1 = data->x[IDIR];
+    IdefixArray1D<real> x2 = data->x[JDIR];
+    IdefixArray1D<real> x3 = data->x[KDIR];
+    real dt = dtin;
+
+    real spin = spinGlob;
+    // -tilt so that the disk is "rotated" counterclockwise
+    real Sx = ZERO_F;
+    real Sy = ZERO_F;
+    real Sz = spin;
+
+    idefix_for("GravitomagneticTerm",
+        0, data->np_tot[KDIR],
+        0, data->np_tot[JDIR],
+        0, data->np_tot[IDIR],
+        KOKKOS_LAMBDA (int k, int j, int i) {
+            real r = x1(i);
+            real th = x2(j);
+            real phi = x3(k);
+            real Vr = Vc(VX1,k,j,i);
+            real Vth = Vc(VX2,k,j,i);
+            real Vphi = Vc(VX3,k,j,i);
+
+            real Sr = sin(th)*cos(phi)*Sx + sin(th)*sin(phi)*Sy + cos(th)*Sz;
+            real Sth = cos(th)*cos(phi)*Sx + cos(th)*sin(phi)*Sy - sin(th)*Sz;
+            real Sphi = - sin(phi)*Sx + cos(phi)*Sy;
+            real hr = -4*Sr / pow(r,3);
+            real hth = 2*Sth / pow(r,3);
+            real hphi = 2*Sphi / pow(r,3);
+            real Vcrossh_r = Vth*hphi - Vphi*hth;
+            real Vcrossh_th = Vphi*hr - Vr*hphi;
+            real Vcrossh_phi = Vr*hth - Vth*hr;
+
+            Uc(MX1,k,j,i) += dt * Vc(RHO,k,j,i) * Vcrossh_r;
+            Uc(MX2,k,j,i) += dt * Vc(RHO,k,j,i) * Vcrossh_th;
+            Uc(MX3,k,j,i) += dt * Vc(RHO,k,j,i) * Vcrossh_phi;
+    });
+}
+
 void EinsteinPotential(DataBlock &data, const real t, IdefixArray1D<real> &x1, IdefixArray1D<real> &x2, IdefixArray1D<real> &x3, IdefixArray3D<real> &phi) {
     idefix_for("EinsteinPotential",0,data.np_tot[KDIR],0,data.np_tot[JDIR],0,data.np_tot[IDIR],
         KOKKOS_LAMBDA (int k, int j, int i) {
@@ -83,7 +126,8 @@ Setup::Setup(Input &input, Grid &grid, DataBlock &data, Output &output) {
     data.hydro->EnrollInternalBoundary(&InternalBoundary);
     data.hydro->EnrollIsoSoundSpeed(&MySoundSpeed);
     data.hydro->viscosity->EnrollViscousDiffusivity(&MyViscosity);
-    // data.gravity->EnrollPotential(&EinsteinPotential);
+    // data.hydro->EnrollUserSourceTerm(&GravitomagneticTerm);
+    data.gravity->EnrollPotential(&EinsteinPotential);
     // data.gravity->EnrollPotential(&PaczynskiWiitaPotential);
 
     analysis = new Analysis(input, grid, data);
@@ -94,6 +138,7 @@ void Setup::InitFlow(DataBlock &data) {
     DataBlockHost d(data);
     real epsilon = epsilonGlob;
     real tilt = tiltGlob * M_PI / 180.0;    // Conversion in radians
+    real densityFloor = densityFloorGlob;
 
     real r, th, phi;
     real x, y, z;
@@ -140,10 +185,11 @@ void Setup::InitFlow(DataBlock &data) {
                 rhoUnt = 1.0/(R * sqrt(R)) * exp(1.0/pow(cs,2) * (1/rUnt - 1/R));
                 VrUnt = ZERO_F;
                 VthUnt  = ZERO_F;
-                if (sin(thUnt) > 2.5*pow(epsilon, 2)) {
-                        VphiUnt = Vk * sqrt(sin(thUnt) - 2.5*pow(epsilon, 2));
+                if (rhoUnt > densityFloorGlob) {
+                    VphiUnt = Vk * sqrt(sin(thUnt) - 2.5*pow(epsilon, 2));
                 }
                 else {
+                    rhoUnt = densityFloorGlob;
                     VphiUnt = ZERO_F;
                 }
 

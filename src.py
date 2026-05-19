@@ -26,6 +26,13 @@ def READ_RADIAL_AVERAGE(n_average, n_r):
     Tilt = np.zeros((n_average, n_r))
     Precession = np.zeros((n_average, n_r))
     L = np.zeros((n_average, n_r, 3))
+    V_r = np.zeros((n_average, n_r))
+    V_theta = np.zeros((n_average, n_r))
+    V_phi = np.zeros((n_average, n_r))
+    rho = np.zeros((n_average, n_r))
+    rho_V_r = np.zeros((n_average, n_r))
+    rho_V_theta = np.zeros((n_average, n_r))
+    rho_V_phi = np.zeros((n_average, n_r))
 
     current_number = 0
     for i in range(n_average):
@@ -52,12 +59,19 @@ def READ_RADIAL_AVERAGE(n_average, n_r):
         L[i,:,0] = V['Lx']
         L[i,:,1] = V['Ly']
         L[i,:,2] = V['Lz']
+        V_r[i,:] = V['Vr']
+        V_theta[i,:] = V['Vth']
+        V_phi[i,:] = V['Vphi']
+        rho[i,:] = V['rho']
+        rho_V_r[i,:] = V['rho_Vr']
+        rho_V_theta[i,:] = V['rho_Vth']
+        rho_V_phi[i,:] = V['rho_Vphi']
 
         norm = np.sqrt(L[i,:,0]**2 + L[i,:,1]**2 + L[i,:,2]**2)
         Tilt[i,:] = np.arccos(L[i,:,2] / norm) * 180/np.pi
         Precession[i,:] = np.arctan2(L[i,:,1], L[i,:,0]) * 180/np.pi
         
-    return V["r"], Sigma, Tilt, Precession, L
+    return V["r"], Sigma, Tilt, Precession, L, V_r, V_theta, V_phi, rho, rho_V_r, rho_V_theta, rho_V_phi
 
 def READ_VTK(n_vtk):
     NVAR = 4
@@ -79,7 +93,6 @@ def READ_VTK(n_vtk):
     r_vtk = current_VTK.r
     theta_vtk = current_VTK.theta
     phi_vtk = current_VTK.phi
-    # x,y,z aussi !!!!!!!!!!!!!!!!!!!!!!!
 
     vtk = np.zeros((NVAR, phi_vtk.size, theta_vtk.size, r_vtk.size), dtype=float)
     vtk[RHO,:,:,:] = np.moveaxis(current_VTK.data['RHO'], [0, 2], [2, 0])
@@ -92,7 +105,7 @@ def READ_VTK(n_vtk):
     v_theta = vtk[VX2,:,:,:]
     v_phi = vtk[VX3,:,:,:]
 
-    return rho, v_r, v_theta, v_phi
+    return r_vtk, theta_vtk, phi_vtk, rho, v_r, v_theta, v_phi
 
 def PLOT(x1, y1, x2, y2, params, a=None):
     w, l = 1.25, 10
@@ -102,6 +115,8 @@ def PLOT(x1, y1, x2, y2, params, a=None):
     ax.plot(x1, y1, color=params["color1"])
     ax.set_xlim((params["xmin1"], params["xmax1"]))
     ax.set_xlabel(params["xlabel1"])
+    if params["yscale"] != None:
+        ax.set_yscale("log")
     ax.set_ylim((params["ymin1"], params["ymax1"]))
     ax.set_ylabel(params["ylabel1"])
     ax.tick_params(axis='y', which='both', direction='in', right=True, width=w, length=l)
@@ -117,6 +132,8 @@ def PLOT(x1, y1, x2, y2, params, a=None):
     ax.plot(x2, y2, color=params["color2"])
     ax.set_xlim((params["xmin2"], params["xmax2"]))
     ax.set_xlabel(params["xlabel2"])
+    if params["yscale"] != None:
+        ax.set_yscale("log")
     ax.set_ylim((params["ymin2"], params["ymax2"]))
     ax.set_ylabel(params["ylabel2"])
     ax.tick_params(axis='y', which='both', direction='in', right=True, width=w, length=l)
@@ -145,26 +162,27 @@ def MOVIE(plots, name):
     cv2.destroyAllWindows()
     video_summary.release()
 
-CST_G, CST_M, CST_C = 1, 1, 1
-R_g = CST_G*CST_M/CST_C**2
-def ISCO(r, a):
-    chi = a * CST_G**2 * CST_M**2 / CST_C**3
+def THEORETICAL_ROTATION_CURVE(r_vtk, Tilt_init, gravity, source_term):
+    if source_term == False:
+        if gravity == "Kepler":
+            POTENTIAL = 1/r_vtk**2
+        elif gravity == "PW":
+            POTENTIAL = 1/(r_vtk - 2)**2
+        elif gravity == "Einstein":
+            POTENTIAL = 1/r_vtk**2 + 6/r_vtk**3
+        omega_th = np.sqrt(POTENTIAL / r_vtk)
+    else:
+        a = r_vtk
+        b = 2 * np.cos(Tilt_init) * a / r_vtk**2
+        if gravity == "Kepler":
+            c = - 1/r_vtk**2
+        elif gravity == "PW":
+            c = - 1/(r_vtk - 2)**2
+        elif gravity == "Einstein":
+            c = - 1/r_vtk**2 - 6/r_vtk**3
+        delta = b**2 - 4*a*c
+        omega_th = (-b + np.sqrt(delta)) / (2*a)
+        
+    kappa_2_th = 4*omega_th**2 + 2*r_vtk*omega_th*np.gradient(omega_th, r_vtk)
 
-    a = r
-    # Source term
-    b = 2*chi / r**2
-    # Einstein potential
-    c = - CST_G*CST_M/r**2 * (1 + 6*R_g/r)
-    # Paczyński–Wiita potential
-    # c = - CST_G*CST_M/(r - 2*R_g)**2
-    delta = b**2 - 4*a*c
-
-    Omega_p = (-b + np.sqrt(delta)) / (2*a)
-    partial_r_Omega_p = np.gradient(Omega_p, r)
-    kappa2_p = 4*Omega_p**2 + 2*r*Omega_p*partial_r_Omega_p
-
-    # For the Einstein potential
-    return r[np.where(kappa2_p > 0)[0][0]]
-    # For the Paczyński–Wiita potential (stable orbits can occur below the Schwarzschild radius, but are not physical)
-    # r2 = r[np.where(kappa2_p > 0)[0][0]]
-    # return r2[np.where[r2 > 2][0][0]]
+    return omega_th, kappa_2_th
