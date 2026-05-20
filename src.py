@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from pytools.vtk_io import readVTK
 import inifix
 import cv2
+import matplotlib.ticker as tkr
 
 def READ_BOX_AVERAGE():
     fid = open("output/analysis/globalAverage.dat", "r")
@@ -162,7 +163,9 @@ def MOVIE(plots, name):
     cv2.destroyAllWindows()
     video_summary.release()
 
-def THEORETICAL_ROTATION_CURVE(r_vtk, Tilt_init, gravity, source_term):
+def THEORETICAL_ROTATION_CURVE(r_vtk, Tilt_init, spin, gravity, source_term):
+    tilt = Tilt_init * np.pi / 180
+
     if source_term == False:
         if gravity == "Kepler":
             POTENTIAL = 1/r_vtk**2
@@ -173,7 +176,7 @@ def THEORETICAL_ROTATION_CURVE(r_vtk, Tilt_init, gravity, source_term):
         omega_th = np.sqrt(POTENTIAL / r_vtk)
     else:
         a = r_vtk
-        b = 2 * np.cos(Tilt_init) * a / r_vtk**2
+        b = 2 * np.cos(tilt) * spin / r_vtk**2
         if gravity == "Kepler":
             c = - 1/r_vtk**2
         elif gravity == "PW":
@@ -185,4 +188,10 @@ def THEORETICAL_ROTATION_CURVE(r_vtk, Tilt_init, gravity, source_term):
         
     kappa_2_th = 4*omega_th**2 + 2*r_vtk*omega_th*np.gradient(omega_th, r_vtk)
 
-    return omega_th, kappa_2_th
+    if r_vtk[np.where(kappa_2_th < 0)].size == 0:
+        return omega_th, kappa_2_th, 0
+    else:
+        return omega_th, kappa_2_th, r_vtk[np.where(kappa_2_th < 0)[0][-1]]
+
+def KEPLER(r_vtk):
+    return np.sqrt(1/r_vtk**3), 1/r_vtk**3
